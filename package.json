@@ -1,29 +1,15 @@
 {
   "name": "onchain-toolkit",
   "version": "1.0.0",
-  "main": "index.js",
+  "private": true,
+  "description": "Monorepo for onchain toolkit with smart contracts and frontend",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "contracts:compile": "pnpm --filter @onchain-toolkit/contracts compile",
+    "contracts:test": "pnpm --filter @onchain-toolkit/contracts test",
+    "contracts:deploy": "pnpm --filter @onchain-toolkit/contracts deploy"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
-  "devDependencies": {
-    "@nomicfoundation/hardhat-ethers": "^4.0.4",
-    "@nomicfoundation/hardhat-ignition": "^3.0.6",
-    "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^3.0.2",
-    "@nomicfoundation/hardhat-verify": "^3.0.8",
-    "@types/chai": "^4.3.20",
-    "@types/chai-as-promised": "^8.0.2",
-    "@types/mocha": "^10.0.10",
-    "@types/node": "^22.19.7",
-    "chai": "^5.3.3",
-    "ethers": "^6.16.0",
-    "forge-std": "github:foundry-rs/forge-std#v1.9.4",
-    "hardhat": "^3.1.4",
-    "mocha": "^11.7.5",
-    "typescript": "~5.8.0"
-  },
   "type": "module"
 }
