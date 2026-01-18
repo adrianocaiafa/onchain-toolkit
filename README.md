@@ -1,57 +1,117 @@
-# Sample Hardhat 3 Beta Project (`mocha` and `ethers`)
+# Onchain Toolkit
 
-This project showcases a Hardhat 3 Beta project using `mocha` for tests and the `ethers` library for Ethereum interactions.
+A comprehensive development toolkit for building onchain protocols, featuring modular smart contract Proofs of Concept (POCs) designed to evolve into production-ready, robust contracts.
 
-To learn more about the Hardhat 3 Beta, please visit the [Getting Started guide](https://hardhat.org/docs/getting-started#getting-started-with-hardhat-3). To share your feedback, join our [Hardhat 3 Beta](https://hardhat.org/hardhat3-beta-telegram-group) Telegram group or [open an issue](https://github.com/NomicFoundation/hardhat/issues/new) in our GitHub issue tracker.
+## Overview
 
-## Project Overview
+The **Onchain Toolkit** is a curated collection of smart contract modules and utilities that serve as building blocks for blockchain applications. Each component starts as a well-tested Proof of Concept (POC) that can be iteratively refined into production-grade contracts suitable for deployment in real-world applications.
 
-This example project includes:
+This toolkit is designed for developers who want to:
+- **Rapidly prototype** onchain functionality
+- **Build composable** smart contract systems
+- **Integrate seamlessly** with frontend applications
+- **Leverage battle-tested** patterns and utilities
 
-- A simple Hardhat configuration file.
-- Foundry-compatible Solidity unit tests.
-- TypeScript integration tests using `mocha` and ethers.js
-- Examples demonstrating how to connect to different types of networks, including locally simulating OP mainnet.
+## Philosophy
 
-## Usage
+We believe in building incrementally—starting with working POCs that demonstrate core concepts, then progressively enhancing them with additional features, security improvements, and optimizations. Each POC in this toolkit is:
+
+- **Well-documented** with clear intent and usage patterns
+- **Thoroughly tested** using both Solidity and TypeScript test suites
+- **Modular and composable** for easy integration
+- **Production-oriented** with a clear path to hardening
+
+## Architecture
+
+Built on **Hardhat 3** with TypeScript support, this toolkit provides:
+
+- **Foundry-compatible** Solidity tests for gas-efficient unit testing
+- **Mocha & Ethers.js** integration tests for comprehensive coverage
+- **Network simulation** for local development (including OP mainnet simulation)
+- **Deployment modules** using Hardhat Ignition for easy contract deployment
+
+## Use Cases
+
+- Building decentralized applications (dApps) with React, Vue, or other frontend frameworks
+- Prototyping new DeFi protocols and mechanisms
+- Creating reusable onchain utilities for multiple projects
+- Learning and experimenting with smart contract development patterns
+- Developing production contracts with a solid foundation
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v18 or later)
+- npm or yarn
+
+### Installation
+
+```bash
+npm install
+```
 
 ### Running Tests
 
-To run all the tests in the project, execute the following command:
-
-```shell
+Run all tests (Solidity + TypeScript):
+```bash
 npx hardhat test
 ```
 
-You can also selectively run the Solidity or `mocha` tests:
-
-```shell
+Run only Solidity tests:
+```bash
 npx hardhat test solidity
+```
+
+Run only Mocha/TypeScript tests:
+```bash
 npx hardhat test mocha
 ```
 
-### Make a deployment to Sepolia
+### Deployment
 
-This project includes an example Ignition module to deploy the contract. You can deploy this module to a locally simulated chain or to Sepolia.
+This project includes deployment modules using Hardhat Ignition.
 
-To run the deployment to a local chain:
-
-```shell
+To deploy to a local simulated chain:
+```bash
 npx hardhat ignition deploy ignition/modules/Counter.ts
 ```
 
-To run the deployment to Sepolia, you need an account with funds to send the transaction. The provided Hardhat configuration includes a Configuration Variable called `SEPOLIA_PRIVATE_KEY`, which you can use to set the private key of the account you want to use.
+To deploy to Sepolia, you need an account with funds. Set the `SEPOLIA_PRIVATE_KEY` configuration variable:
 
-You can set the `SEPOLIA_PRIVATE_KEY` variable using the `hardhat-keystore` plugin or by setting it as an environment variable.
-
-To set the `SEPOLIA_PRIVATE_KEY` config variable using `hardhat-keystore`:
-
-```shell
+Using `hardhat-keystore`:
+```bash
 npx hardhat keystore set SEPOLIA_PRIVATE_KEY
 ```
 
-After setting the variable, you can run the deployment with the Sepolia network:
-
-```shell
+Then deploy to Sepolia:
+```bash
 npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
 ```
+
+## Project Structure
+
+```
+onchain-toolkit/
+├── contracts/          # Solidity smart contracts (POCs)
+├── test/              # Test suites (Foundry + Mocha)
+├── scripts/           # Deployment and utility scripts
+├── ignition/          # Hardhat Ignition deployment modules
+└── hardhat.config.ts  # Hardhat configuration
+```
+
+## Contributing
+
+Each POC added to this toolkit should include:
+- Clear documentation of its purpose and functionality
+- Comprehensive test coverage
+- Usage examples and integration patterns
+- Notes on potential production enhancements
+
+## License
+
+ISC
+
+---
+
+**Note**: This toolkit is in active development. Components may change as they evolve from POCs to production-ready contracts.
