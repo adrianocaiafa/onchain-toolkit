@@ -37,14 +37,14 @@ export default defineConfig({
     base: {
       type: "http",
       chainType: "l1",
-      url: configVariable("BASE_RPC_URL") || "https://mainnet.base.org",
+      url: process.env.BASE_RPC_URL || "https://mainnet.base.org",
       accounts: [configVariable("BASE_PRIVATE_KEY")],
       chainId: 8453,
     },
     baseSepolia: {
       type: "http",
       chainType: "l1",
-      url: configVariable("BASE_SEPOLIA_RPC_URL") || "https://sepolia.base.org",
+      url: process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org",
       accounts: [configVariable("BASE_PRIVATE_KEY")],
       chainId: 84532,
     },
