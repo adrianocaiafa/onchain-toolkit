@@ -180,7 +180,9 @@ contract MultiSigV2 {
         // Protection against delegatecall - block dangerous call patterns
         _validateCallSafety(p.data);
         
-        (bool success, ) = p.target.call{value: p.value}(p.data);
+        // Convert stored bytes to calldata for execution
+        bytes memory callData = p.data;
+        (bool success, ) = p.target.call{value: p.value}(callData);
         if (!success) revert ExecutionFailed();
         
         _registerInteraction(msg.sender);
@@ -207,7 +209,7 @@ contract MultiSigV2 {
 
     /// @notice Validates call data to prevent delegatecall and other dangerous operations
     /// @param _data The call data to validate
-    function _validateCallSafety(bytes calldata _data) internal pure {
+    function _validateCallSafety(bytes memory _data) internal pure {
         if (_data.length < 4) return; // Empty or too short, safe
         
         bytes4 selector = bytes4(_data);
@@ -234,6 +236,45 @@ contract MultiSigV2 {
         }
     }
 
+    /// @notice Internal helper to create proposals with bytes memory data
+    function _createProposal(
+        address _target,
+        uint256 _value,
+        bytes memory _data,
+        uint256 _timelock,
+        uint256 _expiration
+    ) internal returns (uint256) {
+        // Convert bytes memory to calldata by creating a new proposal structure
+        proposalCount++;
+        uint256 proposalId = proposalCount;
+        uint256 currentTime = block.timestamp;
+        
+        uint256 timelock = _timelock == 0 ? DEFAULT_TIMELOCK : _timelock;
+        uint256 expiration = _expiration == 0 ? DEFAULT_EXPIRATION : _expiration;
+        
+        Proposal storage p = proposals[proposalId];
+        p.id = proposalId;
+        p.proposer = msg.sender;
+        p.target = _target;
+        p.value = _value;
+        p.data = _data;
+        p.executed = false;
+        p.approvalCount = 1;
+        p.timelock = timelock;
+        p.createdAt = currentTime;
+        p.expiresAt = currentTime + expiration;
+        p.approvals[msg.sender] = true;
+        
+        activeProposalIds.push(proposalId);
+        
+        _registerInteraction(msg.sender);
+        
+        emit ProposalCreated(proposalId, msg.sender, _target, _value, timelock, p.expiresAt);
+        emit ProposalApproved(proposalId, msg.sender, 1);
+        
+        return proposalId;
+    }
+
     /// @notice Creates a proposal to add a new signer (governance via proposal)
     /// @param _signer Address of the new signer to add
     /// @return proposalId ID of the created proposal
@@ -245,7 +286,7 @@ contract MultiSigV2 {
         bytes memory data = abi.encodeWithSignature("_executeAddSigner(address)", _signer);
         
         // Use critical timelock for administrative operations
-        proposalId = propose(address(this), 0, data, CRITICAL_TIMELOCK, DEFAULT_EXPIRATION);
+        proposalId = _createProposal(address(this), 0, data, CRITICAL_TIMELOCK, DEFAULT_EXPIRATION);
     }
 
     /// @notice Creates a proposal to remove a signer (governance via proposal)
@@ -259,7 +300,7 @@ contract MultiSigV2 {
         bytes memory data = abi.encodeWithSignature("_executeRemoveSigner(address)", _signer);
         
         // Use critical timelock for administrative operations
-        proposalId = propose(address(this), 0, data, CRITICAL_TIMELOCK, DEFAULT_EXPIRATION);
+        proposalId = _createProposal(address(this), 0, data, CRITICAL_TIMELOCK, DEFAULT_EXPIRATION);
     }
 
     /// @notice Creates a proposal to change the threshold (governance via proposal)
@@ -272,7 +313,7 @@ contract MultiSigV2 {
         bytes memory data = abi.encodeWithSignature("_executeSetThreshold(uint256)", _newThreshold);
         
         // Use critical timelock for administrative operations
-        proposalId = propose(address(this), 0, data, CRITICAL_TIMELOCK, DEFAULT_EXPIRATION);
+        proposalId = _createProposal(address(this), 0, data, CRITICAL_TIMELOCK, DEFAULT_EXPIRATION);
     }
 
     /// @notice Internal function to execute addSigner (called via proposal execution)
@@ -331,7 +372,7 @@ contract MultiSigV2 {
     /// @return timelock Timelock delay in seconds
     /// @return createdAt Timestamp when proposal was created
     /// @return expiresAt Timestamp when proposal expires
-    /// @return canExecute Whether it can be executed now (checks approvals, timelock, expiration)
+    /// @return executable Whether it can be executed now (checks approvals, timelock, expiration)
     function getProposal(uint256 _proposalId)
         external
         view
@@ -345,7 +386,7 @@ contract MultiSigV2 {
             uint256 timelock,
             uint256 createdAt,
             uint256 expiresAt,
-            bool canExecute
+            bool executable
         )
     {
         Proposal storage p = proposals[_proposalId];
