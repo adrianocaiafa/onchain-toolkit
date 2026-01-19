@@ -177,15 +177,8 @@ contract MultiSigV2 {
         
         _removeFromActiveProposals(_proposalId);
         
-        // Protection against delegatecall - check if data starts with delegatecall selector
-        // delegatecall selector: 0xb61d27f6 or 0x4f51f97b (common patterns)
-        if (p.data.length >= 4) {
-            bytes4 selector = bytes4(p.data);
-            // Block known delegatecall patterns
-            if (selector == 0xb61d27f6 || selector == 0x4f51f97b) {
-                revert DelegatecallNotAllowed();
-            }
-        }
+        // Protection against delegatecall - block dangerous call patterns
+        _validateCallSafety(p.data);
         
         (bool success, ) = p.target.call{value: p.value}(p.data);
         if (!success) revert ExecutionFailed();
@@ -210,6 +203,35 @@ contract MultiSigV2 {
         _registerInteraction(msg.sender);
         
         emit ProposalCancelled(_proposalId, msg.sender);
+    }
+
+    /// @notice Validates call data to prevent delegatecall and other dangerous operations
+    /// @param _data The call data to validate
+    function _validateCallSafety(bytes calldata _data) internal pure {
+        if (_data.length < 4) return; // Empty or too short, safe
+        
+        bytes4 selector = bytes4(_data);
+        
+        // Block delegatecall (0xb61d27f6) and callcode (0xa9059cbb is transfer, but we check for delegatecall)
+        // Common delegatecall selectors:
+        // - delegatecall: 0xb61d27f6 (delegatecall(address,bytes))
+        // - callcode: 0x4f51f97b (deprecated but still dangerous)
+        // - selfdestruct: 0x00f55d9d (selfdestruct(address))
+        if (
+            selector == 0xb61d27f6 || // delegatecall
+            selector == 0x4f51f97b || // callcode (deprecated)
+            selector == 0x00f55d9d    // selfdestruct
+        ) {
+            revert DelegatecallNotAllowed();
+        }
+        
+        // Additional check: if data contains delegatecall opcode (0xf4) in first bytes
+        // This catches attempts to use inline assembly or low-level calls
+        for (uint256 i = 0; i < _data.length && i < 100; i++) {
+            if (uint8(_data[i]) == 0xf4) { // DELEGATECALL opcode
+                revert DelegatecallNotAllowed();
+            }
+        }
     }
 
     function _removeFromActiveProposals(uint256 _proposalId) internal {
