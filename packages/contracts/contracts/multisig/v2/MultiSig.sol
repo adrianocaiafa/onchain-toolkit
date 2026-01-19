@@ -320,6 +320,121 @@ contract MultiSigV2 {
         emit ThresholdChanged(oldThreshold, _newThreshold);
     }
 
+    /// @notice Returns detailed information about a proposal
+    /// @param _proposalId ID of the proposal
+    /// @return id ID of the proposal
+    /// @return proposer Address of the proposer
+    /// @return target Target address of the proposal
+    /// @return value Value in wei of the proposal
+    /// @return executed Whether it has been executed
+    /// @return approvalCount Number of approvals
+    /// @return timelock Timelock delay in seconds
+    /// @return createdAt Timestamp when proposal was created
+    /// @return expiresAt Timestamp when proposal expires
+    /// @return canExecute Whether it can be executed now (checks approvals, timelock, expiration)
+    function getProposal(uint256 _proposalId)
+        external
+        view
+        returns (
+            uint256 id,
+            address proposer,
+            address target,
+            uint256 value,
+            bool executed,
+            uint256 approvalCount,
+            uint256 timelock,
+            uint256 createdAt,
+            uint256 expiresAt,
+            bool canExecute
+        )
+    {
+        Proposal storage p = proposals[_proposalId];
+        uint256 currentTime = block.timestamp;
+        bool timelockMet = currentTime >= p.createdAt + p.timelock;
+        bool notExpired = currentTime <= p.expiresAt;
+        bool hasApprovals = p.approvalCount >= threshold;
+        
+        return (
+            p.id,
+            p.proposer,
+            p.target,
+            p.value,
+            p.executed,
+            p.approvalCount,
+            p.timelock,
+            p.createdAt,
+            p.expiresAt,
+            !p.executed && hasApprovals && timelockMet && notExpired
+        );
+    }
+
+    /// @notice Checks if a signer has approved a specific proposal
+    /// @param _proposalId ID of the proposal
+    /// @param _signer Address of the signer
+    /// @return true if approved, false otherwise
+    function hasApproved(uint256 _proposalId, address _signer)
+        external
+        view
+        returns (bool)
+    {
+        return proposals[_proposalId].approvals[_signer];
+    }
+
+    /// @notice Returns array with all active signers
+    /// @return Array of signer addresses
+    function getSigners() external view returns (address[] memory) {
+        return signers;
+    }
+
+    /// @notice Returns IDs of all active (non-executed and non-expired) proposals
+    /// @return Array with IDs of active proposals
+    function getActiveProposals() external view returns (uint256[] memory) {
+        uint256[] memory active = new uint256[](activeProposalIds.length);
+        uint256 count = 0;
+        uint256 currentTime = block.timestamp;
+        
+        for (uint256 i = 0; i < activeProposalIds.length; i++) {
+            Proposal storage p = proposals[activeProposalIds[i]];
+            if (!p.executed && currentTime <= p.expiresAt) {
+                active[count] = activeProposalIds[i];
+                count++;
+            }
+        }
+        
+        // Resize array to actual count
+        uint256[] memory result = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
+            result[i] = active[i];
+        }
+        
+        return result;
+    }
+
+    /// @notice Returns the total number of signers
+    /// @return Number of signers
+    function getSignerCount() external view returns (uint256) {
+        return signers.length;
+    }
+
+    /// @notice Returns how many times the caller has interacted with the contract
+    /// @return Number of interactions
+    function myInteractions() external view returns (uint256) {
+        return interactionsCount[msg.sender];
+    }
+
+    /// @notice Checks if a proposal can be executed (all conditions met)
+    /// @param _proposalId ID of the proposal
+    /// @return true if proposal can be executed, false otherwise
+    function canExecute(uint256 _proposalId) external view returns (bool) {
+        Proposal storage p = proposals[_proposalId];
+        if (p.id == 0 || p.executed) return false;
+        
+        uint256 currentTime = block.timestamp;
+        return p.approvalCount >= threshold 
+            && currentTime >= p.createdAt + p.timelock
+            && currentTime <= p.expiresAt;
+    }
+
     function _removeFromActiveProposals(uint256 _proposalId) internal {
         for (uint256 i = 0; i < activeProposalIds.length; i++) {
             if (activeProposalIds[i] == _proposalId) {
