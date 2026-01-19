@@ -98,5 +98,129 @@ contract MultiSigV2 {
     event ProposalExecuted(uint256 indexed proposalId, address indexed executor);
     event ProposalCancelled(uint256 indexed proposalId, address indexed canceller);
 
+    /// @notice Creates a new action proposal
+    /// @param _target Address of the contract/target that will receive the call
+    /// @param _value Value in wei to send (0 for calls without value)
+    /// @param _data Call data (can be empty for simple transfers)
+    /// @param _timelock Custom timelock in seconds (0 to use default)
+    /// @param _expiration Custom expiration in seconds from now (0 to use default)
+    /// @return proposalId ID of the created proposal
+    function propose(
+        address _target,
+        uint256 _value,
+        bytes calldata _data,
+        uint256 _timelock,
+        uint256 _expiration
+    ) external onlySigner returns (uint256 proposalId) {
+        require(_target != address(0), "Invalid target");
+        
+        proposalId = ++proposalCount;
+        uint256 currentTime = block.timestamp;
+        
+        // Use default timelock if not specified
+        uint256 timelock = _timelock == 0 ? DEFAULT_TIMELOCK : _timelock;
+        // Use default expiration if not specified
+        uint256 expiration = _expiration == 0 ? DEFAULT_EXPIRATION : _expiration;
+        
+        Proposal storage p = proposals[proposalId];
+        p.id = proposalId;
+        p.proposer = msg.sender;
+        p.target = _target;
+        p.value = _value;
+        p.data = _data;
+        p.executed = false;
+        p.approvalCount = 1;
+        p.timelock = timelock;
+        p.createdAt = currentTime;
+        p.expiresAt = currentTime + expiration;
+        p.approvals[msg.sender] = true;
+        
+        activeProposalIds.push(proposalId);
+        
+        _registerInteraction(msg.sender);
+        
+        emit ProposalCreated(proposalId, msg.sender, _target, _value, timelock, p.expiresAt);
+        emit ProposalApproved(proposalId, msg.sender, 1);
+    }
+
+    /// @notice Approves an existing proposal
+    /// @param _proposalId ID of the proposal to approve
+    function approve(uint256 _proposalId) external onlySigner {
+        Proposal storage p = proposals[_proposalId];
+        
+        if (p.id == 0) revert InvalidProposal();
+        if (p.executed) revert AlreadyExecuted();
+        if (block.timestamp > p.expiresAt) revert ProposalExpired();
+        if (p.approvals[msg.sender]) revert AlreadyApproved();
+        
+        p.approvals[msg.sender] = true;
+        p.approvalCount += 1;
+        
+        _registerInteraction(msg.sender);
+        
+        emit ProposalApproved(_proposalId, msg.sender, p.approvalCount);
+    }
+
+    /// @notice Executes a proposal that has reached the approval threshold
+    /// @dev Can be called by any address after reaching required approvals and timelock
+    /// @param _proposalId ID of the proposal to execute
+    function execute(uint256 _proposalId) external {
+        Proposal storage p = proposals[_proposalId];
+        
+        if (p.id == 0) revert InvalidProposal();
+        if (p.executed) revert AlreadyExecuted();
+        if (block.timestamp > p.expiresAt) revert ProposalExpired();
+        if (p.approvalCount < threshold) revert InsufficientApprovals();
+        if (block.timestamp < p.createdAt + p.timelock) revert TimelockNotMet();
+        
+        p.executed = true;
+        
+        _removeFromActiveProposals(_proposalId);
+        
+        // Protection against delegatecall - check if data starts with delegatecall selector
+        // delegatecall selector: 0xb61d27f6 or 0x4f51f97b (common patterns)
+        if (p.data.length >= 4) {
+            bytes4 selector = bytes4(p.data);
+            // Block known delegatecall patterns
+            if (selector == 0xb61d27f6 || selector == 0x4f51f97b) {
+                revert DelegatecallNotAllowed();
+            }
+        }
+        
+        (bool success, ) = p.target.call{value: p.value}(p.data);
+        if (!success) revert ExecutionFailed();
+        
+        _registerInteraction(msg.sender);
+        
+        emit ProposalExecuted(_proposalId, msg.sender);
+    }
+
+    /// @notice Cancels a proposal (only by the proposer)
+    /// @param _proposalId ID of the proposal to cancel
+    function cancel(uint256 _proposalId) external {
+        Proposal storage p = proposals[_proposalId];
+        
+        if (p.id == 0) revert InvalidProposal();
+        if (p.executed) revert AlreadyExecuted();
+        if (msg.sender != p.proposer) revert NotProposer();
+        
+        p.executed = true;
+        _removeFromActiveProposals(_proposalId);
+        
+        _registerInteraction(msg.sender);
+        
+        emit ProposalCancelled(_proposalId, msg.sender);
+    }
+
+    function _removeFromActiveProposals(uint256 _proposalId) internal {
+        for (uint256 i = 0; i < activeProposalIds.length; i++) {
+            if (activeProposalIds[i] == _proposalId) {
+                activeProposalIds[i] = activeProposalIds[activeProposalIds.length - 1];
+                activeProposalIds.pop();
+                break;
+            }
+        }
+    }
+
     receive() external payable {}
 }
