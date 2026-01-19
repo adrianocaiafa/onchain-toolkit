@@ -234,6 +234,92 @@ contract MultiSigV2 {
         }
     }
 
+    /// @notice Creates a proposal to add a new signer (governance via proposal)
+    /// @param _signer Address of the new signer to add
+    /// @return proposalId ID of the created proposal
+    function proposeAddSigner(address _signer) external onlySigner returns (uint256 proposalId) {
+        if (_signer == address(0)) revert NotASigner();
+        if (isSigner[_signer]) revert AlreadySigner();
+        
+        // Encode the addSigner call
+        bytes memory data = abi.encodeWithSignature("_executeAddSigner(address)", _signer);
+        
+        // Use critical timelock for administrative operations
+        proposalId = propose(address(this), 0, data, CRITICAL_TIMELOCK, DEFAULT_EXPIRATION);
+    }
+
+    /// @notice Creates a proposal to remove a signer (governance via proposal)
+    /// @param _signer Address of the signer to remove
+    /// @return proposalId ID of the created proposal
+    function proposeRemoveSigner(address _signer) external onlySigner returns (uint256 proposalId) {
+        if (!isSigner[_signer]) revert NotASigner();
+        if (threshold > signers.length - 1) revert InvalidThreshold();
+        
+        // Encode the removeSigner call
+        bytes memory data = abi.encodeWithSignature("_executeRemoveSigner(address)", _signer);
+        
+        // Use critical timelock for administrative operations
+        proposalId = propose(address(this), 0, data, CRITICAL_TIMELOCK, DEFAULT_EXPIRATION);
+    }
+
+    /// @notice Creates a proposal to change the threshold (governance via proposal)
+    /// @param _newThreshold New threshold value
+    /// @return proposalId ID of the created proposal
+    function proposeSetThreshold(uint256 _newThreshold) external onlySigner returns (uint256 proposalId) {
+        require(_newThreshold > 0 && _newThreshold <= signers.length, "Invalid threshold");
+        
+        // Encode the setThreshold call
+        bytes memory data = abi.encodeWithSignature("_executeSetThreshold(uint256)", _newThreshold);
+        
+        // Use critical timelock for administrative operations
+        proposalId = propose(address(this), 0, data, CRITICAL_TIMELOCK, DEFAULT_EXPIRATION);
+    }
+
+    /// @notice Internal function to execute addSigner (called via proposal execution)
+    /// @param _signer Address of the signer to add
+    function _executeAddSigner(address _signer) external {
+        require(msg.sender == address(this), "Only self-call allowed");
+        if (_signer == address(0)) revert NotASigner();
+        if (isSigner[_signer]) revert AlreadySigner();
+        
+        isSigner[_signer] = true;
+        signers.push(_signer);
+        
+        emit SignerAdded(_signer, signers.length, threshold);
+    }
+
+    /// @notice Internal function to execute removeSigner (called via proposal execution)
+    /// @param _signer Address of the signer to remove
+    function _executeRemoveSigner(address _signer) external {
+        require(msg.sender == address(this), "Only self-call allowed");
+        if (!isSigner[_signer]) revert NotASigner();
+        if (threshold > signers.length - 1) revert InvalidThreshold();
+        
+        isSigner[_signer] = false;
+        
+        for (uint256 i = 0; i < signers.length; i++) {
+            if (signers[i] == _signer) {
+                signers[i] = signers[signers.length - 1];
+                signers.pop();
+                break;
+            }
+        }
+        
+        emit SignerRemoved(_signer, signers.length, threshold);
+    }
+
+    /// @notice Internal function to execute setThreshold (called via proposal execution)
+    /// @param _newThreshold New threshold value
+    function _executeSetThreshold(uint256 _newThreshold) external {
+        require(msg.sender == address(this), "Only self-call allowed");
+        require(_newThreshold > 0 && _newThreshold <= signers.length, "Invalid threshold");
+        
+        uint256 oldThreshold = threshold;
+        threshold = _newThreshold;
+        
+        emit ThresholdChanged(oldThreshold, _newThreshold);
+    }
+
     function _removeFromActiveProposals(uint256 _proposalId) internal {
         for (uint256 i = 0; i < activeProposalIds.length; i++) {
             if (activeProposalIds[i] == _proposalId) {
