@@ -56,7 +56,7 @@ contract MultiSigV2_1 is Pausable {
     error AlreadyApproved();
     error InsufficientApprovals();
     error AlreadyExecuted();
-    error ProposalCancelled();
+    error ProposalAlreadyCancelled();
     error ExecutionFailed();
     error TimelockNotMet();
     error ProposalExpired();
@@ -201,7 +201,7 @@ contract MultiSigV2_1 is Pausable {
         
         if (p.id == 0) revert InvalidProposal();
         if (p.executed) revert AlreadyExecuted();
-        if (p.cancelled) revert ProposalCancelled();
+        if (p.cancelled) revert ProposalAlreadyCancelled();
         if (block.timestamp > p.expiresAt) revert ProposalExpired();
         if (p.approvals[msg.sender]) revert AlreadyApproved();
         
@@ -220,7 +220,7 @@ contract MultiSigV2_1 is Pausable {
         
         if (p.id == 0) revert InvalidProposal();
         if (p.executed) revert AlreadyExecuted();
-        if (p.cancelled) revert ProposalCancelled();
+        if (p.cancelled) revert ProposalAlreadyCancelled();
         if (block.timestamp > p.expiresAt) revert ProposalExpired();
         if (p.approvalCount < threshold) revert InsufficientApprovals();
         if (block.timestamp < p.createdAt + p.timelock) revert TimelockNotMet();
@@ -250,7 +250,7 @@ contract MultiSigV2_1 is Pausable {
         
         if (p.id == 0) revert InvalidProposal();
         if (p.executed) revert AlreadyExecuted();
-        if (p.cancelled) revert ProposalCancelled();
+        if (p.cancelled) revert ProposalAlreadyCancelled();
         if (msg.sender != p.proposer) revert NotProposer();
         
         p.cancelled = true;

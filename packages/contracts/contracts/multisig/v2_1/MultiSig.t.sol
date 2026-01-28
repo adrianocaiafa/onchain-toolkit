@@ -190,7 +190,7 @@ contract MultiSigV2_1Test is Test {
         multisig.cancel(proposalId);
         
         vm.prank(signer2);
-        vm.expectRevert(MultiSigV2_1.ProposalCancelled.selector);
+        vm.expectRevert(MultiSigV2_1.ProposalAlreadyCancelled.selector);
         multisig.approve(proposalId, 0);
     }
 
@@ -247,7 +247,7 @@ contract MultiSigV2_1Test is Test {
         vm.prank(signer1);
         multisig.cancel(proposalId);
         
-        vm.expectRevert(MultiSigV2_1.ProposalCancelled.selector);
+        vm.expectRevert(MultiSigV2_1.ProposalAlreadyCancelled.selector);
         multisig.execute(proposalId);
     }
 
