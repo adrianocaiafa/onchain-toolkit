@@ -149,7 +149,7 @@ contract MultiSigV2_1Test is Test {
         vm.prank(signer2);
         multisig.approve(proposalId, 0);
         
-        (,,,,,uint256 approvalCount,,,,,) = multisig.getProposal(proposalId);
+        (,,,,,,uint256 approvalCount,,,,) = multisig.getProposal(proposalId);
         require(approvalCount == 2, "Should have 2 approvals");
     }
 
@@ -298,7 +298,7 @@ contract MultiSigV2_1Test is Test {
         
         require(proposalId > 0, "Should create proposal");
         
-        (,,address target,,,,uint256 timelock,,,,) = multisig.getProposal(proposalId);
+        (,,address target,,,,,uint256 timelock,,,) = multisig.getProposal(proposalId);
         require(target == address(multisig), "Target should be multisig contract");
         require(timelock == multisig.CRITICAL_TIMELOCK(), "Should use critical timelock");
     }
