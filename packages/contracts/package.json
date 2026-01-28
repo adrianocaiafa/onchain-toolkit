@@ -10,6 +10,9 @@
     "test:mocha": "hardhat test mocha",
     "deploy": "hardhat ignition deploy"
   },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "^4.0.4",
     "@nomicfoundation/hardhat-ignition": "^3.0.6",
